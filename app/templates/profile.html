@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+
+{% block body_content %}
+<div class="layout-grid">
+    <aside class="sidebar">
+        <div class="sidebar-header">
+            <h3>GovFlow</h3>
+            <button class="sidebar-toggle" onclick="toggleSidebar()" aria-label="Close sidebar">&times;</button>
+        </div>
+        <ul>
+            <li><a href="{{ url_for('dashboard') }}">My Dashboard</a></li>
+            <li><a href="{{ url_for('profile') }}" class="active">Profile</a></li>
+            {% if user.role == 'Manager' %}
+            <li><a href="{{ url_for('create_goal') }}">Assign Goal</a></li>
+            {% endif %}
+        </ul>
+        <footer>
+            <small>Logged in as: {{ user.full_name }}</small>
+        </footer>
+    </aside>
+
+    <main class="main-content">
+        <header class="main-header">
+            <h1>My Profile</h1>
+            <a href="{{ url_for('logout') }}" role="button" class="secondary outline">Log Out</a>
+        </header>
+        <article>
+            <div class="grid">
+                <div>
+                    <label>Full Name</label>
+                    <input type="text" value="{{ user.full_name }}" readonly>
+                </div>
+                <div>
+                    <label>Email Address</label>
+                    <input type="email" value="{{ user.email }}" readonly>
+                </div>
+            </div>
+            <div class="grid">
+                <div>
+                    <label>Role</label>
+                    <input type="text" value="{{ user.role }}" readonly>
+                </div>
+                {% if user.manager %}
+                <div>
+                    <label>Manager</label>
+                    <input type="text" value="{{ user.manager.full_name }}" readonly>
+                </div>
+                {% endif %}
+            </div>
+            <label>Current Performance Score</label>
+            <progress value="{{ score }}" max="100"></progress>
+        </article>
+    </main>
+</div>
+{% endblock %}
+

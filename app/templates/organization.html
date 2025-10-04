@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+
+{% block body_content %}
+<div class="layout-grid">
+    <aside class="sidebar">
+        <div class="sidebar-header">
+            <h3>GovFlow</h3>
+            <button class="sidebar-toggle" onclick="toggleSidebar()" aria-label="Close sidebar">&times;</button>
+        </div>
+        <ul>
+            <li><a href="{{ url_for('organization') }}" class="active">Organizational View</a></li>
+        </ul>
+        <footer>
+            <small>Logged in as: {{ user.full_name }}</small>
+        </footer>
+    </aside>
+
+    <main class="main-content">
+        <header class="main-header">
+            <h1>Organizational Overview</h1>
+            <a href="{{ url_for('logout') }}" role="button" class="secondary outline">Log Out</a>
+        </header>
+        <article>
+            <table>
+                <thead>
+                    <tr>
+                        <th scope="col">Manager</th>
+                        <th scope="col">Overall Team Progress</th>
+                    </tr>
+                </thead>
+                <tbody>
+                {% for manager_data in managers_data %}
+                    <tr>
+                        <td>
+                            <strong>{{ manager_data.info.full_name }}</strong>
+                        </td>
+                        <td>
+                            <progress value="{{ manager_data.avg_progress }}" max="100"></progress>
+                            <small>{{ manager_data.avg_progress }}%</small>
+                        </td>
+                    </tr>
+                {% else %}
+                    <tr>
+                        <td colspan="2">No managers found in the system.</td>
+                    </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </article>
+    </main>
+</div>
+{% endblock %}
+

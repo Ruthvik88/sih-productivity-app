@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+
+{% block body_content %}
+<div class="layout-grid">
+    <aside class="sidebar">
+        <div class="sidebar-header">
+            <h3>GovFlow</h3>
+            <button class="sidebar-toggle" onclick="toggleSidebar()" aria-label="Close sidebar">&times;</button>
+        </div>
+        <ul>
+            <li><a href="{{ url_for('dashboard') }}">My Dashboard</a></li>
+            <li><a href="{{ url_for('profile') }}">Profile</a></li>
+            {% if user.role == 'Manager' %}
+            <li><a href="{{ url_for('create_goal') }}" class="active">Assign Goal</a></li>
+            {% endif %}
+        </ul>
+        <footer>
+            <small>Logged in as: {{ user.full_name }}</small>
+        </footer>
+    </aside>
+
+    <main class="main-content">
+        <header class="main-header">
+            <h1>Assign a New Goal</h1>
+            <a href="{{ url_for('logout') }}" role="button" class="secondary outline">Log Out</a>
+        </header>
+        <article>
+            <form method="post" novalidate>
+                <label for="title">Goal Title</label>
+                <input type="text" id="title" name="title" placeholder="e.g., Finalize weekly report" required>
+
+                <label for="description">Description (Optional)</label>
+                <textarea id="description" name="description"></textarea>
+
+                <label for="assignee">Assign To</label>
+                <select id="assignee" name="assignee" required>
+                    <option value="" disabled selected>Select an employee...</option>
+                    {% for employee in reports %}
+                        <option value="{{ employee.id }}">{{ employee.full_name }}</option>
+                    {% endfor %}
+                </select>
+
+                <button type="submit">Create and Assign Goal</button>
+            </form>
+        </article>
+    </main>
+</div>
+{% endblock %}
+

@@ -1,0 +1,100 @@
+/* --- Final Polished UI (Dark Mode) --- */
+
+/* 1. Root Variables & Body */
+:root {
+    --pico-font-family: 'Inter', sans-serif;
+    --pico-primary: #6366f1;
+    --pico-primary-hover: #4f46e5;
+    --pico-primary-focus: rgba(99, 102, 241, 0.25);
+    --pico-primary-inverse: #ffffff;
+    --sidebar-background-color: #1f2937;
+    --pico-card-border-color: #374151;
+}
+body {
+    background-color: var(--pico-background-color);
+}
+
+/* 2. Main Layout with Collapsible Sidebar */
+.layout-grid {
+    display: grid;
+    grid-template-columns: 240px 1fr; /* Default sidebar width */
+    transition: grid-template-columns 0.3s ease-in-out;
+}
+.sidebar {
+    background-color: var(--sidebar-background-color);
+    padding: 1.5rem;
+    border-right: 1px solid var(--pico-card-border-color);
+    height: 100vh;
+    position: sticky;
+    top: 0;
+    overflow-x: hidden;
+    transition: all 0.3s ease-in-out;
+}
+.sidebar-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+    padding: 0 0.5rem;
+}
+.sidebar h3 { margin: 0; color: var(--pico-primary); }
+.sidebar-toggle {
+    background: none; border: none; cursor: pointer;
+    color: var(--pico-muted-color); padding: 0.5rem;
+}
+.sidebar ul { list-style: none; padding: 0; margin: 0; }
+.sidebar ul li a {
+    display: block; padding: 0.75rem 1rem;
+    border-radius: var(--pico-border-radius);
+    margin-bottom: 0.5rem; text-decoration: none;
+    transition: background-color 0.2s, color 0.2s;
+    white-space: nowrap;
+}
+.sidebar ul li a:hover, .sidebar ul li a.active {
+    background-color: var(--pico-primary);
+    color: var(--pico-primary-inverse);
+}
+.sidebar footer {
+    position: absolute; bottom: 1.5rem;
+    white-space: nowrap;
+}
+
+/* Main Content Area */
+.main-content {
+    padding: 2.5rem;
+}
+.main-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+}
+.main-header h1 { margin: 0; }
+
+/* Collapsed Sidebar State */
+.layout-grid.sidebar-collapsed {
+    grid-template-columns: 0 1fr;
+}
+.layout-grid.sidebar-collapsed .sidebar {
+    padding: 1.5rem 0;
+    width: 0;
+}
+/* This toggle is ALWAYS visible when collapsed */
+.sidebar-open-toggle {
+    position: fixed;
+    top: 1.25rem;
+    left: 1.5rem;
+    z-index: 1000;
+    background: var(--pico-card-background-color);
+    border: 1px solid var(--pico-card-border-color);
+    border-radius: var(--pico-border-radius);
+    display: none; /* Hidden by default */
+}
+
+/* Login Page Styles */
+.login-container {
+    display: flex; justify-content: center;
+    align-items: center; min-height: 100vh;
+}
+.login-card { width: 100%; max-width: 450px; padding: 2.5rem; }
+

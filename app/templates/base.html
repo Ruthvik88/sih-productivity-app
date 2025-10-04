@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@1/css/pico.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <title>{{ title if title else 'GovFlow Productivity' }}</title>
+</head>
+<body>
+    
+    <!-- This button is only visible when the sidebar is collapsed -->
+    <button class="sidebar-open-toggle" onclick="toggleSidebar()" aria-label="Open sidebar" style="display: none;">☰</button>
+
+    {% block body_content %}{% endblock %}
+
+    <script>
+        // Universal slider script
+        document.addEventListener('DOMContentLoaded', () => {
+          document.querySelectorAll('input[type="range"]').forEach(slider => {
+            slider.addEventListener('input', (event) => {
+              const goalId = event.target.id.split('-').pop();
+              const valueSpan = document.getElementById(`progress-value-${goalId}`);
+              if (valueSpan) valueSpan.innerText = event.target.value;
+            });
+          });
+
+          // Set the initial sidebar state on page load
+          const layoutGrid = document.querySelector('.layout-grid');
+          const openToggle = document.querySelector('.sidebar-open-toggle');
+          if (layoutGrid && openToggle) {
+              if (!layoutGrid.classList.contains('sidebar-collapsed')) {
+                  layoutGrid.classList.add('sidebar-collapsed');
+              }
+              openToggle.style.display = 'block';
+          }
+        });
+
+        // Sidebar toggle script
+        function toggleSidebar() {
+            const layoutGrid = document.querySelector('.layout-grid');
+            const openToggle = document.querySelector('.sidebar-open-toggle');
+            if (layoutGrid) {
+                layoutGrid.classList.toggle('sidebar-collapsed');
+
+                // Show/hide the open button based on collapsed state
+                if (layoutGrid.classList.contains('sidebar-collapsed')) {
+                    openToggle.style.display = 'block';
+                } else {
+                    openToggle.style.display = 'none';
+                }
+            }
+        }
+    </script>
+</body>
+</html>
+

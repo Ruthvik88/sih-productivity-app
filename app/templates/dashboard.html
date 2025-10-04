@@ -1,0 +1,144 @@
+{% extends "base.html" %}
+
+{% block body_content %}
+<div class="layout-grid">
+    <aside class="sidebar">
+        <div class="sidebar-header">
+            <h3>GovFlow</h3>
+            <button class="sidebar-toggle" onclick="toggleSidebar()" aria-label="Close sidebar">&times;</button>
+        </div>
+        <ul>
+            <li><a href="{{ url_for('dashboard') }}" class="active">My Dashboard</a></li>
+            <li><a href="{{ url_for('profile') }}">Profile</a></li>
+            {% if user.role == 'Manager' %}
+            <li><a href="{{ url_for('create_goal') }}">Assign Goal</a></li>
+            {% endif %}
+        </ul>
+        <footer>
+            <small>Logged in as: {{ user.full_name }}</small><br>
+            <small><strong>Score: {{ score }}/100</strong></small>
+        </footer>
+    </aside>
+
+    <main class="main-content">
+        <header class="main-header">
+            <h1>Dashboard</h1>
+            <a href="{{ url_for('logout') }}" role="button" class="secondary outline">Log Out</a>
+        </header>
+        
+        {% if user.role != 'Administrator' %}
+            <h2>Your Assigned Goals</h2>
+            {% if goals %}
+                {% for goal in goals %}
+                    <article>
+                        <header><strong>{{ goal.title }}</strong></header>
+                        Status: {{ goal.status }}
+                        {% if goal.manager_feedback %}
+                            <div style="margin-top: 15px; padding: 10px; border-left: 3px solid var(--pico-primary);">
+                                <strong>Manager's Feedback:</strong>
+                                <p style="margin: 5px 0 0 0;"><em>"{{ goal.manager_feedback }}"</em></p>
+                            </div>
+                        {% endif %}
+                        <form action="{{ url_for('update_goal', goal_id=goal.id) }}" method="post" style="margin-top: 15px;">
+                            <div class="grid">
+                                <div>
+                                    <label for="progress-{{ goal.id }}">
+                                        Progress: <span id="progress-value-{{ goal.id }}">{{ goal.current_value }}</span>%
+                                    </label>
+                                    <input type="range" id="progress-{{ goal.id }}" name="progress" value="{{ goal.current_value }}" min="0" max="100">
+                                </div>
+                                <div>
+                                    <label for="status-{{ goal.id }}">Set Status</label>
+                                    <select id="status-{{ goal.id }}" name="status" required>
+                                        <option value="In Progress" {% if goal.status == 'In Progress' %}selected{% endif %}>In Progress</option>
+                                        <option value="Completed" {% if goal.status == 'Completed' %}selected{% endif %}>Completed</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <button type="submit">Update</button>
+                        </form>
+                    </article>
+                {% else %}
+                    <p>You have no goals assigned yet.</p>
+                {% endfor %}
+            {% endif %}
+        {% endif %}
+
+        {% if user.role == 'Manager' and reports_data %}
+        <hr>
+        <h2>Your Team's Progress</h2>
+        <article>
+            <header>Team Performance Chart</header>
+            <canvas id="teamPerformanceChart"></canvas>
+        </article>
+        {% for data in reports_data %}
+            <details>
+                <summary>
+                    <strong>{{ data.employee.full_name }}</strong> (Score: {{ data.score }}/100)
+                </summary>
+                {% if data.employee.goals %}
+                    <ul>
+                    {% for goal in data.employee.goals %}
+                        <li>
+                            {{ goal.title }} - Progress: {{ goal.current_value }}%
+                            <form class="feedback-form" data-goal-id="{{ goal.id }}" style="margin-top: 10px;">
+                                <textarea name="feedback" placeholder="Add feedback for this goal...">{{ goal.manager_feedback or '' }}</textarea>
+                                <button type="submit" class="secondary" style="width: auto;">Submit Feedback</button>
+                                <small class="feedback-status" id="feedback-status-{{ goal.id }}" style="display:none; color: var(--pico-color-green-500);"></small>
+                            </form>
+                        </li>
+                    {% endfor %}
+                    </ul>
+                {% else %}
+                    <p>No goals assigned yet.</p>
+                {% endif %}
+            </details>
+        {% endfor %}
+        {% endif %}
+    </main>
+</div>
+
+<!-- Dynamic Feedback and Chart JS scripts -->
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        // Dynamic Feedback Logic
+        document.querySelectorAll('.feedback-form').forEach(form => {
+            form.addEventListener('submit', function(event) {
+                event.preventDefault();
+                const goalId = this.dataset.goalId;
+                const feedbackText = this.querySelector('textarea').value;
+                const statusElement = document.getElementById(`feedback-status-${goalId}`);
+                fetch(`/add_feedback/${goalId}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded', },
+                    body: `feedback=${encodeURIComponent(feedbackText)}`
+                })
+                .then(r => r.json()).then(d => {
+                    if (d.success) {
+                        statusElement.innerText = 'Feedback saved!';
+                        statusElement.style.display = 'inline';
+                        setTimeout(() => { statusElement.style.display = 'none'; }, 2000);
+                    } else {
+                        statusElement.innerText = 'Error!';
+                        statusElement.style.color = 'var(--pico-color-red-500)';
+                        statusElement.style.display = 'inline';
+                    }
+                });
+            });
+        });
+
+        // Chart.js Logic
+        const chartLabels = {{ chart_labels|tojson }};
+        if (chartLabels && chartLabels.length > 0) {
+            const chartData = {{ chart_data|tojson }};
+            const ctx = document.getElementById('teamPerformanceChart').getContext('2d');
+            new Chart(ctx, {
+                type: 'bar',
+                data: { labels: chartLabels, datasets: [{ label: 'Performance Score', data: chartData, backgroundColor: 'rgba(79, 70, 229, 0.6)', borderColor: 'rgba(79, 70, 229, 1)', borderWidth: 1 }] },
+                options: { scales: { y: { beginAtZero: true, max: 100 } }, responsive: true, plugins: { legend: { display: false } } }
+            });
+        }
+    });
+</script>
+{% endblock %}
+
