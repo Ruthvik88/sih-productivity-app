@@ -43,8 +43,11 @@ body {
     color: var(--pico-muted-color); padding: 0.5rem;
 }
 .sidebar ul { list-style: none; padding: 0; margin: 0; }
+
+/* --- THIS IS THE FIX --- */
+/* Increased horizontal padding from 1rem to 1.5rem for more breathing room */
 .sidebar ul li a {
-    display: block; padding: 0.75rem 1rem;
+    display: block; padding: 0.75rem 1.5rem;
     border-radius: var(--pico-border-radius);
     margin-bottom: 0.5rem; text-decoration: none;
     transition: background-color 0.2s, color 0.2s;

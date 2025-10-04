@@ -25,43 +25,56 @@ class User(db.Model):
     def __repr__(self):
         return f'<User {self.full_name}>'
 
-    # START: New method for calculating score
+    # --- THIS METHOD IS NOW UPDATED ---
     def calculate_performance_score(self):
+        """Calculates a weighted performance score for the user based on their goals."""
         my_goals = self.goals.all()
 
         if not my_goals:
             return 0
-
-        # 1. Calculate completion score (70% weight)
-        total_progress = sum(goal.current_value for goal in my_goals)
-        average_completion = total_progress / len(my_goals)
-        completion_score = (average_completion / 100) * 70
-
-        # 2. Calculate status score (30% weight)
-        completed_goals = sum(1 for goal in my_goals if goal.status == 'Completed')
-        status_ratio = completed_goals / len(my_goals)
-        status_score = status_ratio * 30
-
-        # Final score
-        final_score = int(completion_score + status_score)
         
-        return final_score
-    # END: New method
+        total_weight = sum(goal.weight for goal in my_goals)
+        if total_weight == 0:
+            return 0 # Avoid division by zero if all goals have a weight of 0
+
+        # Calculate the weighted score based on each goal's progress and weight
+        weighted_score = sum(goal.get_progress() * goal.weight for goal in my_goals)
+        
+        # Normalize the score to a 0-100 scale
+        normalized_score = (weighted_score / total_weight)
+        
+        return int(normalized_score)
 
 class Goal(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     title = db.Column(db.String(250), nullable=False)
     description = db.Column(db.Text)
-    kpi_name = db.Column(db.String(100)) # Simplified for MVP
+    kpi_name = db.Column(db.String(100))
     current_value = db.Column(db.Integer, default=0)
     target_value = db.Column(db.Integer, default=100)
+    # --- THIS COLUMN IS NOW CORRECTED ---
+    # It has nullable=False and a default value, which is better for the database
+    weight = db.Column(db.Integer, default=5, nullable=False)
     status = db.Column(db.String(64), index=True, default='In Progress')
     due_date = db.Column(db.DateTime)
-    manager_feedback = db.Column(db.Text) # Simplified for MVP
+    manager_feedback = db.Column(db.Text)
 
-    # This is the foreign key linking a Goal to a User
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'))
 
     def __repr__(self):
         return f'<Goal {self.title}>'
+
+    # --- THIS IS THE NEW, REQUIRED METHOD ---
+    def get_progress(self):
+        """Calculates the percentage progress of a goal."""
+        if self.target_value == 0:
+            # If target is 0, progress is 100% if current value is also 0, otherwise it's undefined.
+            # We'll treat it as 100% complete to avoid division by zero errors.
+            return 100
+        
+        # Calculate progress as a percentage
+        progress = (self.current_value / self.target_value) * 100
+        
+        # Ensure progress doesn't exceed 100%
+        return min(progress, 100)
 

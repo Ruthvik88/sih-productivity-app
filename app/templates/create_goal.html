@@ -8,9 +8,15 @@
             <button class="sidebar-toggle" onclick="toggleSidebar()" aria-label="Close sidebar">&times;</button>
         </div>
         <ul>
+            <!-- Logic for active link based on role -->
+            {% if user.role == 'Administrator' %}
+            <li><a href="{{ url_for('organization') }}">Organizational View</a></li>
+            {% else %}
             <li><a href="{{ url_for('dashboard') }}">My Dashboard</a></li>
             <li><a href="{{ url_for('profile') }}">Profile</a></li>
-            {% if user.role == 'Manager' %}
+            {% endif %}
+            
+            {% if user.role in ['Manager', 'Administrator'] %}
             <li><a href="{{ url_for('create_goal') }}" class="active">Assign Goal</a></li>
             {% endif %}
         </ul>
@@ -27,16 +33,41 @@
         <article>
             <form method="post" novalidate>
                 <label for="title">Goal Title</label>
-                <input type="text" id="title" name="title" placeholder="e.g., Finalize weekly report" required>
+                <input type="text" id="title" name="title" placeholder="e.g., Finalize Q3 budget report" required>
 
-                <label for="description">Description (Optional)</label>
-                <textarea id="description" name="description"></textarea>
+                <label for="description">Description</label>
+                <textarea id="description" name="description" placeholder="Provide more details about the goal..."></textarea>
+                
+                <hr>
+                
+                <div class="grid">
+                    <div>
+                        <label for="kpi_name">KPI Name</label>
+                        <input type="text" id="kpi_name" name="kpi_name" placeholder="e.g., Reports Submitted" required>
+                    </div>
+                    <div>
+                        <label for="target_value">Target Value</label>
+                        <input type="number" id="target_value" name="target_value" value="100" required>
+                    </div>
+                    <div>
+                        <label for="weight">Importance Weight (1-10)</label>
+                        <input type="number" id="weight" name="weight" min="1" max="10" value="5" required>
+                    </div>
+                </div>
+                
+                <hr>
 
+                <!-- MODIFIED: This dropdown now shows managers for admins or employees for managers -->
                 <label for="assignee">Assign To</label>
                 <select id="assignee" name="assignee" required>
-                    <option value="" disabled selected>Select an employee...</option>
-                    {% for employee in reports %}
-                        <option value="{{ employee.id }}">{{ employee.full_name }}</option>
+                    {% if user.role == 'Administrator' %}
+                        <option value="" disabled selected>Select a manager...</option>
+                    {% else %}
+                        <option value="" disabled selected>Select an employee...</option>
+                    {% endif %}
+
+                    {% for person in assignees %}
+                        <option value="{{ person.id }}">{{ person.full_name }}</option>
                     {% endfor %}
                 </select>
 

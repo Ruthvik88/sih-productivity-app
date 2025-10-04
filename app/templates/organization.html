@@ -9,8 +9,11 @@
         </div>
         <ul>
             <li><a href="{{ url_for('organization') }}" class="active">Organizational View</a></li>
+            <!-- THIS LINK IS NEW -->
+            <li><a href="{{ url_for('create_goal') }}">Assign Goal to Manager</a></li>
         </ul>
         <footer>
+            <!-- This line will now work correctly because the route was fixed -->
             <small>Logged in as: {{ user.full_name }}</small>
         </footer>
     </aside>

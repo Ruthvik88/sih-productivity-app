@@ -1,5 +1,10 @@
 {% extends "base.html" %}
 
+{% block head_content %}
+<!-- We need Chart.js for the manager's team performance chart -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+{% endblock %}
+
 {% block body_content %}
 <div class="layout-grid">
     <aside class="sidebar">
@@ -98,10 +103,19 @@
     </main>
 </div>
 
-<!-- Dynamic Feedback and Chart JS scripts -->
+<!-- START: CONSOLIDATED SCRIPT BLOCK -->
 <script>
     document.addEventListener('DOMContentLoaded', () => {
-        // Dynamic Feedback Logic
+        // --- NEW: Logic for updating the slider value text ---
+        document.querySelectorAll('input[type="range"]').forEach(slider => {
+            slider.addEventListener('input', (event) => {
+                const goalId = event.target.id.split('-').pop();
+                const valueSpan = document.getElementById(`progress-value-${goalId}`);
+                if (valueSpan) valueSpan.innerText = event.target.value;
+            });
+        });
+
+        // --- Logic for Dynamic Feedback Forms ---
         document.querySelectorAll('.feedback-form').forEach(form => {
             form.addEventListener('submit', function(event) {
                 event.preventDefault();
@@ -127,18 +141,45 @@
             });
         });
 
-        // Chart.js Logic
+        // --- Logic for Chart.js ---
         const chartLabels = {{ chart_labels|tojson }};
         if (chartLabels && chartLabels.length > 0) {
             const chartData = {{ chart_data|tojson }};
             const ctx = document.getElementById('teamPerformanceChart').getContext('2d');
             new Chart(ctx, {
                 type: 'bar',
-                data: { labels: chartLabels, datasets: [{ label: 'Performance Score', data: chartData, backgroundColor: 'rgba(79, 70, 229, 0.6)', borderColor: 'rgba(79, 70, 229, 1)', borderWidth: 1 }] },
-                options: { scales: { y: { beginAtZero: true, max: 100 } }, responsive: true, plugins: { legend: { display: false } } }
+                data: {
+                    labels: chartLabels,
+                    datasets: [{
+                        label: 'Performance Score',
+                        data: chartData,
+                        backgroundColor: 'rgba(99, 102, 241, 0.6)',
+                        borderColor: 'rgba(99, 102, 241, 1)',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            max: 100,
+                            ticks: { color: 'rgba(255,255,255,0.7)' },
+                            grid: { color: 'rgba(255,255,255,0.1)' }
+                        },
+                        x: {
+                            ticks: { color: 'rgba(255,255,255,0.7)' },
+                            grid: { color: 'rgba(255,255,255,0.1)' }
+                        }
+                    },
+                    responsive: true,
+                    plugins: {
+                        legend: { display: false }
+                    }
+                }
             });
         }
     });
 </script>
+<!-- END: CONSOLIDATED SCRIPT BLOCK -->
 {% endblock %}
 

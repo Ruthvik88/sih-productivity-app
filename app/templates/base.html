@@ -9,6 +9,9 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@1/css/pico.min.css">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
     <title>{{ title if title else 'GovFlow Productivity' }}</title>
+    
+    <!-- NEW: Block for page-specific content in the head, like scripts or styles -->
+    {% block head_content %}{% endblock %}
 </head>
 <body>
     
@@ -18,7 +21,7 @@
     {% block body_content %}{% endblock %}
 
     <script>
-        // Universal slider script
+        // Universal slider script (kept for potential future use)
         document.addEventListener('DOMContentLoaded', () => {
           document.querySelectorAll('input[type="range"]').forEach(slider => {
             slider.addEventListener('input', (event) => {
@@ -27,16 +30,6 @@
               if (valueSpan) valueSpan.innerText = event.target.value;
             });
           });
-
-          // Set the initial sidebar state on page load
-          const layoutGrid = document.querySelector('.layout-grid');
-          const openToggle = document.querySelector('.sidebar-open-toggle');
-          if (layoutGrid && openToggle) {
-              if (!layoutGrid.classList.contains('sidebar-collapsed')) {
-                  layoutGrid.classList.add('sidebar-collapsed');
-              }
-              openToggle.style.display = 'block';
-          }
         });
 
         // Sidebar toggle script
@@ -45,8 +38,6 @@
             const openToggle = document.querySelector('.sidebar-open-toggle');
             if (layoutGrid) {
                 layoutGrid.classList.toggle('sidebar-collapsed');
-
-                // Show/hide the open button based on collapsed state
                 if (layoutGrid.classList.contains('sidebar-collapsed')) {
                     openToggle.style.display = 'block';
                 } else {
@@ -54,7 +45,49 @@
                 }
             }
         }
+
+        // --- NEW: Scripts for modal and data fetching ---
+
+        // Function to open a modal by its ID
+        function openModal(modalId) {
+            document.getElementById(modalId).setAttribute('open', '');
+        }
+
+        // Function to close a modal by its ID
+        function closeModal(modalId) {
+            document.getElementById(modalId).removeAttribute('open');
+        }
+
+        // Function to prepare and open the feedback modal
+        async function prepareFeedbackModal(employeeId, employeeName) {
+            const modalBody = document.getElementById('modal-body-content');
+            const modalEmployeeName = document.getElementById('modal-employee-name');
+            
+            // Set the employee name in the modal title
+            modalEmployeeName.innerText = employeeName;
+            modalBody.innerHTML = '<p>Loading goals...</p>';
+            openModal('feedback-modal');
+
+            // Fetch the goals for this employee from our new API endpoint
+            try {
+                const response = await fetch(`/get_employee_goals/${employeeId}`);
+                const goals = await response.json();
+                
+                let goalsHtml = 'No goals found for this employee.';
+                if (goals.length > 0) {
+                    goalsHtml = '<ul>';
+                    goals.forEach(goal => {
+                        goalsHtml += `<li><strong>${goal.title}</strong>: ${goal.current_value} / ${goal.target_value} (${goal.status})</li>`;
+                    });
+                    goalsHtml += '</ul>';
+                }
+                modalBody.innerHTML = goalsHtml;
+
+            } catch (error) {
+                modalBody.innerHTML = '<p>Could not load goals. Please try again.</p>';
+                console.error('Error fetching employee goals:', error);
+            }
+        }
     </script>
 </body>
 </html>
-
