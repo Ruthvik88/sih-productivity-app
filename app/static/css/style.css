@@ -10,26 +10,32 @@
     --sidebar-background-color: #1f2937;
     --pico-card-border-color: #374151;
 }
-body {
-    background-color: var(--pico-background-color);
+
+html, body {
+    height: 100%;
+    margin: 0;
+    overflow: hidden; 
 }
 
 /* 2. Main Layout with Collapsible Sidebar */
 .layout-grid {
     display: grid;
-    grid-template-columns: 240px 1fr; /* Default sidebar width */
+    /* --- FINAL WIDTH ADJUSTMENT --- */
+    /* Increased sidebar width for better text fit. */
+    grid-template-columns: 280px 1fr; 
+    height: 100vh;
     transition: grid-template-columns 0.3s ease-in-out;
 }
+
 .sidebar {
     background-color: var(--sidebar-background-color);
     padding: 1.5rem;
     border-right: 1px solid var(--pico-card-border-color);
-    height: 100vh;
-    position: sticky;
-    top: 0;
     overflow-x: hidden;
+    white-space: nowrap;
     transition: all 0.3s ease-in-out;
 }
+
 .sidebar-header {
     display: flex;
     justify-content: space-between;
@@ -44,15 +50,21 @@ body {
 }
 .sidebar ul { list-style: none; padding: 0; margin: 0; }
 
-/* --- THIS IS THE FIX --- */
-/* Increased horizontal padding from 1rem to 1.5rem for more breathing room */
 .sidebar ul li a {
-    display: block; padding: 0.75rem 1.5rem;
+    display: block;
+    /* Increased vertical padding to give wrapped text more room */
+    padding: 1rem 1.5rem; 
     border-radius: var(--pico-border-radius);
-    margin-bottom: 0.5rem; text-decoration: none;
+    margin-bottom: 0.5rem; 
+    text-decoration: none;
     transition: background-color 0.2s, color 0.2s;
-    white-space: nowrap;
+
+    /* --- FIX: Replaced single-line rules with wrapping rules --- */
+    white-space: normal;     /* Allow text to wrap naturally */
+    line-height: 1.4;        /* Add a little space between lines of text */
+    word-wrap: break-word;   /* Ensure long words don't overflow the button */
 }
+
 .sidebar ul li a:hover, .sidebar ul li a.active {
     background-color: var(--pico-primary);
     color: var(--pico-primary-inverse);
@@ -65,7 +77,10 @@ body {
 /* Main Content Area */
 .main-content {
     padding: 2.5rem;
+    overflow-y: auto;
+    height: 100vh;
 }
+
 .main-header {
     display: flex;
     justify-content: space-between;
@@ -79,19 +94,30 @@ body {
     grid-template-columns: 0 1fr;
 }
 .layout-grid.sidebar-collapsed .sidebar {
-    padding: 1.5rem 0;
+    padding-left: 0;
+    padding-right: 0;
     width: 0;
 }
-/* This toggle is ALWAYS visible when collapsed */
+
+/* --- UPDATED --- */
+/* Increased top/left values to give the button more "padding" from the corner. */
 .sidebar-open-toggle {
     position: fixed;
-    top: 1.25rem;
-    left: 1.5rem;
+    top: 1rem;
+    left: 1rem;
     z-index: 1000;
+    width: 45px;
+    height: 45px;
     background: var(--pico-card-background-color);
     border: 1px solid var(--pico-card-border-color);
     border-radius: var(--pico-border-radius);
-    display: none; /* Hidden by default */
+    display: none; /* JavaScript will manage showing this */
+
+    /* --- NEW FIX: More direct centering for the icon --- */
+    padding: 0;                  /* 1. Removes default button padding */
+    font-size: 1.5rem;           /* 2. Makes the icon a bit bigger and easier to see */
+    text-align: center;          /* 3. Centers the icon horizontally */
+    line-height: 45px;           /* 4. Centers the icon vertically by matching the button's height */
 }
 
 /* Login Page Styles */
@@ -100,4 +126,3 @@ body {
     align-items: center; min-height: 100vh;
 }
 .login-card { width: 100%; max-width: 450px; padding: 2.5rem; }
-
