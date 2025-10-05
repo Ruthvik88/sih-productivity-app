@@ -1,12 +1,5 @@
 {% extends "base.html" %}
 
-{% block head_content %}
-    {% if user.role == 'Manager' and chart_labels %}
-        <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    {% endif %}
-{% endblock %}
-
-
 {% block body_content %}
 <div class="layout-grid">
     <aside class="sidebar">
@@ -45,7 +38,6 @@
                                 Status: <strong>{{ goal.status }}</strong>
                             </div>
                             <div style="text-align: right;">
-                                <!-- --- UI CHANGE: BUTTONS FOR MODALS --- -->
                                 <button class="secondary outline" onclick="showHistoryModal({{ goal.id }})">View History</button>
                                 <button onclick="showUpdateModal({{ goal.id }}, {{ goal.current_value }}, '{{ goal.status }}', {{ goal.target_value }})">Update Progress</button>
                             </div>
@@ -78,8 +70,8 @@
                         <strong>{{ data.employee.full_name }}</strong> (Score: {{ data.score }}/100)
                         <small style="float: right; margin-left: 1rem;">League: {{ data.employee.league }}</small>
                     </summary>
-                    <!-- --- THIS IS THE FIX --- -->
-                    <!-- The list of goals is now pre-sorted in routes.py -->
+                    <!-- --- THIS IS THE FIX for the 'Goal is undefined' error --- -->
+                    <!-- The list of goals is now pre-sorted in routes.py and passed as 'sorted_goals' -->
                     {% if data.sorted_goals %}
                         <ul>
                         {% for goal in data.sorted_goals %}
@@ -103,7 +95,7 @@
     </main>
 </div>
 
-<!-- --- NEW: MODAL FOR UPDATING PROGRESS --- -->
+<!-- --- MODAL DIALOGS --- -->
 <dialog id="update-modal">
     <article>
         <header>
@@ -138,7 +130,6 @@
     </article>
 </dialog>
 
-<!-- --- NEW: MODAL FOR VIEWING HISTORY --- -->
 <dialog id="history-modal">
     <article>
         <header>
@@ -146,7 +137,6 @@
             <strong id="history-goal-title">Progress History</strong>
         </header>
         <div id="history-content">
-            <!-- History will be loaded here by JavaScript -->
             <p>Loading history...</p>
         </div>
         <footer>
@@ -155,5 +145,68 @@
     </article>
 </dialog>
 
+<!-- --- THIS IS THE FIX for the chart loading issue --- -->
+<!-- Load the Chart.js library only when needed, and right before we use it. -->
+{% if user.role == 'Manager' and chart_labels %}
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+{% endif %}
+
+<!-- Main script block for feedback forms and charts -->
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        // --- Logic for Dynamic Feedback Forms ---
+        document.querySelectorAll('.feedback-form').forEach(form => {
+            form.addEventListener('submit', function(event) {
+                event.preventDefault();
+                const goalId = this.dataset.goalId;
+                const feedbackText = this.querySelector('textarea').value;
+                const statusElement = document.getElementById(`feedback-status-${goalId}`);
+                fetch(`/add_feedback/${goalId}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded', },
+                    body: `feedback=${encodeURIComponent(feedbackText)}`
+                })
+                .then(r => r.json()).then(d => {
+                    if (d.success) {
+                        statusElement.innerText = 'Feedback saved!';
+                        statusElement.style.display = 'inline';
+                        setTimeout(() => { statusElement.style.display = 'none'; }, 2000);
+                    } else {
+                        // Handle error
+                    }
+                });
+            });
+        });
+
+        // --- Logic for Chart.js ---
+        const chartLabels = {{ chart_labels|tojson }};
+        // Check if Chart object exists before trying to use it
+        if (typeof Chart !== 'undefined' && chartLabels && chartLabels.length > 0) {
+            const chartData = {{ chart_data|tojson }};
+            const ctx = document.getElementById('teamPerformanceChart').getContext('2d');
+            new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: chartLabels,
+                    datasets: [{
+                        label: 'Performance Score',
+                        data: chartData,
+                        backgroundColor: 'rgba(99, 102, 241, 0.6)',
+                        borderColor: 'rgba(99, 102, 241, 1)',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    scales: {
+                        y: { beginAtZero: true, max: 100, ticks: { color: 'rgba(255,255,255,0.7)' }, grid: { color: 'rgba(255,255,255,0.1)' } },
+                        x: { ticks: { color: 'rgba(255,255,255,0.7)' }, grid: { color: 'rgba(255,255,255,0.1)' } }
+                    },
+                    responsive: true,
+                    plugins: { legend: { display: false } }
+                }
+            });
+        }
+    });
+</script>
 {% endblock %}
 
