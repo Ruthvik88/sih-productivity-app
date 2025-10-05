@@ -10,84 +10,144 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
     <title>{{ title if title else 'GovFlow Productivity' }}</title>
     
-    <!-- NEW: Block for page-specific content in the head, like scripts or styles -->
+    <!-- --- NEW: Universal Modal Styles --- -->
+    <style>
+        dialog article { padding-bottom: 0; }
+        dialog article footer { margin-top: 1rem; }
+        /* Style for history list */
+        #history-content ul { list-style: none; padding: 0; }
+        #history-content li { 
+            border-left: 3px solid var(--pico-primary); 
+            padding-left: 1rem; 
+            margin-bottom: 1.5rem; 
+        }
+        #history-content li p { margin: 0.25rem 0; }
+    </style>
+
     {% block head_content %}{% endblock %}
 </head>
 <body>
     
-    <!-- This button is only visible when the sidebar is collapsed -->
     <button class="sidebar-open-toggle" onclick="toggleSidebar()" aria-label="Open sidebar" style="display: none;">☰</button>
 
     {% block body_content %}{% endblock %}
 
+    <!-- --- NEW: Universal Modal & Form Scripts --- -->
     <script>
-        // Universal slider script (kept for potential future use)
-        document.addEventListener('DOMContentLoaded', () => {
-          document.querySelectorAll('input[type="range"]').forEach(slider => {
-            slider.addEventListener('input', (event) => {
-              const goalId = event.target.id.split('-').pop();
-              const valueSpan = document.getElementById(`progress-value-${goalId}`);
-              if (valueSpan) valueSpan.innerText = event.target.value;
-            });
-          });
-        });
-
-        // Sidebar toggle script
+        // --- Sidebar Toggle Logic ---
         function toggleSidebar() {
             const layoutGrid = document.querySelector('.layout-grid');
             const openToggle = document.querySelector('.sidebar-open-toggle');
             if (layoutGrid) {
                 layoutGrid.classList.toggle('sidebar-collapsed');
-                if (layoutGrid.classList.contains('sidebar-collapsed')) {
-                    openToggle.style.display = 'block';
-                } else {
-                    openToggle.style.display = 'none';
-                }
+                openToggle.style.display = layoutGrid.classList.contains('sidebar-collapsed') ? 'block' : 'none';
             }
         }
+        document.addEventListener('DOMContentLoaded', () => {
+             const layoutGrid = document.querySelector('.layout-grid');
+             if(layoutGrid) {
+                layoutGrid.classList.add('sidebar-collapsed');
+                const openToggle = document.querySelector('.sidebar-open-toggle');
+                if (openToggle) openToggle.style.display = 'block';
+             }
+        });
 
-        // --- NEW: Scripts for modal and data fetching ---
 
-        // Function to open a modal by its ID
-        function openModal(modalId) {
-            document.getElementById(modalId).setAttribute('open', '');
+        // --- Modal Control Functions ---
+        function openModal(modalId) { 
+            const modal = document.getElementById(modalId);
+            if(modal) modal.showModal(); 
+        }
+        function closeModal(modalId) { 
+            const modal = document.getElementById(modalId);
+            if(modal) modal.close(); 
         }
 
-        // Function to close a modal by its ID
-        function closeModal(modalId) {
-            document.getElementById(modalId).removeAttribute('open');
+        // --- Update Progress Modal Logic ---
+        function showUpdateModal(goalId, currentVal, currentStatus, targetVal) {
+            document.getElementById('update-goal-id').value = goalId;
+            const slider = document.getElementById('progress-slider');
+            slider.value = currentVal;
+            slider.max = targetVal;
+            document.getElementById('progress-value-display').innerText = currentVal;
+            document.getElementById('target-value-display').innerText = targetVal;
+            document.getElementById('status-select').value = currentStatus;
+            document.getElementById('comment-textarea').value = '';
+            document.getElementById('proof-input').value = '';
+            openModal('update-modal');
         }
 
-        // Function to prepare and open the feedback modal
-        async function prepareFeedbackModal(employeeId, employeeName) {
-            const modalBody = document.getElementById('modal-body-content');
-            const modalEmployeeName = document.getElementById('modal-employee-name');
+        const progressSlider = document.getElementById('progress-slider');
+        if (progressSlider) {
+            progressSlider.addEventListener('input', (e) => {
+                document.getElementById('progress-value-display').innerText = e.target.value;
+            });
+        }
+        
+        function handleUpdateSubmit(event) {
+            event.preventDefault();
+            const form = event.target;
+            const goalId = document.getElementById('update-goal-id').value;
+            const submitBtn = document.getElementById('submit-update-btn');
+            const formData = new FormData(form);
             
-            // Set the employee name in the modal title
-            modalEmployeeName.innerText = employeeName;
-            modalBody.innerHTML = '<p>Loading goals...</p>';
-            openModal('feedback-modal');
+            submitBtn.setAttribute('aria-busy', 'true');
+            submitBtn.disabled = true;
 
-            // Fetch the goals for this employee from our new API endpoint
-            try {
-                const response = await fetch(`/get_employee_goals/${employeeId}`);
-                const goals = await response.json();
-                
-                let goalsHtml = 'No goals found for this employee.';
-                if (goals.length > 0) {
-                    goalsHtml = '<ul>';
-                    goals.forEach(goal => {
-                        goalsHtml += `<li><strong>${goal.title}</strong>: ${goal.current_value} / ${goal.target_value} (${goal.status})</li>`;
-                    });
-                    goalsHtml += '</ul>';
+            fetch(`/update_goal/${goalId}`, {
+                method: 'POST',
+                body: new URLSearchParams(formData)
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    closeModal('update-modal');
+                    location.reload(); // Reload to see changes
+                } else {
+                    alert('Error: ' + data.message);
+                    submitBtn.removeAttribute('aria-busy');
+                    submitBtn.disabled = false;
                 }
-                modalBody.innerHTML = goalsHtml;
+            })
+            .catch(err => {
+                 alert('A network error occurred. Please try again.');
+                 submitBtn.removeAttribute('aria-busy');
+                 submitBtn.disabled = false;
+            });
+        }
 
-            } catch (error) {
-                modalBody.innerHTML = '<p>Could not load goals. Please try again.</p>';
-                console.error('Error fetching employee goals:', error);
-            }
+
+        // --- View History Modal Logic ---
+        function showHistoryModal(goalId) {
+            const contentDiv = document.getElementById('history-content');
+            contentDiv.innerHTML = '<p aria-busy="true">Loading history...</p>';
+            openModal('history-modal');
+
+            fetch(`/get_goal_history/${goalId}`)
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    document.getElementById('history-goal-title').innerText = `History for: ${data.goal_title}`;
+                    let html = '<p>No history found.</p>';
+                    if (data.history.length > 0) {
+                        html = '<ul>';
+                        data.history.forEach(update => {
+                            html += `<li>
+                                <strong>Update to ${update.value} on ${update.timestamp}</strong><br>
+                                <small>By: ${update.author}</small>
+                                <p><em>"${update.comment}"</em></p>
+                                ${update.proof ? `<p><small>Proof: <a href="${update.proof}" target="_blank" rel="noopener noreferrer">${update.proof}</a></small></p>` : ''}
+                            </li>`;
+                        });
+                        html += '</ul>';
+                    }
+                    contentDiv.innerHTML = html;
+                } else {
+                    contentDiv.innerHTML = `<p>Error: ${data.message}</p>`;
+                }
+            });
         }
     </script>
 </body>
 </html>
+

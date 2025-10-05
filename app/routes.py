@@ -1,6 +1,7 @@
 from flask import render_template, request, flash, redirect, url_for, session, abort, jsonify
 from app import app, db
-from app.models import User, Goal
+from app.models import User, Goal, ProgressUpdate # Import the new model
+from datetime import datetime
 
 @app.route('/', methods=['GET', 'POST'])
 @app.route('/login', methods=['GET', 'POST'])
@@ -14,16 +15,11 @@ def login():
     if request.method == 'POST':
         email = request.form.get('email')
         password = request.form.get('password')
-        # --- THIS IS THE FIX ---
-        # We must find the user by the email from the form, not from the session.
         user = User.query.filter_by(email=email).first()
 
         if user and user.check_password(password):
             session['user_id'] = user.id
-            
-            # This line makes the session cookie expire when the browser is closed.
             session.permanent = False
-            
             flash('Login successful!')
             
             if user.role == 'Administrator':
@@ -44,7 +40,7 @@ def dashboard():
     if user.role == 'Administrator':
         return redirect(url_for('organization'))
 
-    goals = user.goals.all()
+    goals = user.goals.order_by(Goal.status.asc()).all()
     score = user.calculate_performance_score()
     
     reports_data = []
@@ -54,7 +50,15 @@ def dashboard():
     if user.role == 'Manager':
         for report in user.reports:
             report_score = report.calculate_performance_score()
-            reports_data.append({'employee': report, 'score': report_score})
+            # --- THIS IS THE FIX ---
+            # Sort the employee's goals here in the backend before sending to the template
+            sorted_employee_goals = report.goals.order_by(Goal.status.asc()).all()
+            
+            reports_data.append({
+                'employee': report, 
+                'score': report_score,
+                'sorted_goals': sorted_employee_goals # Pass the pre-sorted list to the template
+            })
             chart_labels.append(report.full_name)
             chart_data.append(report_score)
 
@@ -74,27 +78,49 @@ def logout():
     flash('You have been logged out.')
     return redirect(url_for('login'))
 
+# --- OVERHAULED FOR PROOF OF UPDATE ---
 @app.route('/update_goal/<int:goal_id>', methods=['POST'])
 def update_goal(goal_id):
     if 'user_id' not in session:
-        return redirect(url_for('login'))
+        return jsonify({'success': False, 'message': 'Authentication required'}), 401
 
     goal = Goal.query.get_or_404(goal_id)
-    if goal.employee.id != session['user_id']:
-        abort(403)
+    user = User.query.get(session['user_id'])
 
-    goal.current_value = int(request.form.get('progress'))
-    goal.status = request.form.get('status')
+    if goal.employee.id != user.id:
+        return jsonify({'success': False, 'message': 'Permission denied'}), 403
+
+    # Get data from the new modal form
+    progress = request.form.get('progress', type=int)
+    status = request.form.get('status')
+    comment = request.form.get('comment')
+    proof_url = request.form.get('proof_url')
+
+    if not comment:
+        return jsonify({'success': False, 'message': 'An update comment is required.'}), 400
+
+    # 1. Create the permanent audit record
+    new_update = ProgressUpdate(
+        update_value=progress,
+        comment=comment,
+        proof_url=proof_url,
+        author=user,
+        goal=goal
+    )
+    db.session.add(new_update)
+
+    # 2. Update the goal's main values
+    goal.current_value = progress
+    goal.status = status
     
     db.session.commit()
     
-    # --- THIS IS THE CHANGE FOR THE GAMIFICATION FEATURE ---
-    # After updating the goal, get the user and check if they qualify for a promotion.
-    user = User.query.get(session['user_id'])
+    # 3. Check for league promotion
     user.update_league()
+    db.session.commit() # Commit the league change
     
-    flash('Goal updated successfully!')
-    return redirect(url_for('dashboard'))
+    return jsonify({'success': True, 'message': 'Progress updated successfully!'})
+
 
 @app.route('/organization')
 def organization():
@@ -125,14 +151,12 @@ def organization():
     return render_template('organization.html', title='Organizational View', user=user, managers_data=managers_data)
 
 
-# --- MODIFIED FOR NEW FEATURE ---
 @app.route('/create_goal', methods=['GET', 'POST'])
 def create_goal():
     if 'user_id' not in session:
         return redirect(url_for('login'))
     
     user = User.query.get(session['user_id'])
-    # Allow both Managers and Administrators to access this page
     if user.role not in ['Manager', 'Administrator']:
         abort(403)
 
@@ -146,7 +170,6 @@ def create_goal():
 
         assignee = User.query.get(assignee_id)
         
-        # Validation: Check if the current user is authorized to assign a goal to the selected user
         is_authorized = False
         if user.role == 'Manager' and assignee and assignee.manager_id == user.id:
             is_authorized = True
@@ -165,14 +188,13 @@ def create_goal():
             db.session.add(new_goal)
             db.session.commit()
             flash('New goal has been assigned successfully!')
-            # Redirect admins to organization view, managers to dashboard
+            
             if user.role == 'Administrator':
                 return redirect(url_for('organization'))
             return redirect(url_for('dashboard'))
         else:
             flash('Invalid employee or manager selected.', 'error')
 
-    # Determine who to show in the assignee dropdown
     assignees = []
     if user.role == 'Manager':
         assignees = user.reports.all()
@@ -234,4 +256,37 @@ def get_employee_goals(employee_id):
     } for goal in employee.goals]
     
     return jsonify({'success': True, 'goals': goals, 'employee_name': employee.full_name})
+
+
+# --- NEW ROUTE TO FETCH GOAL HISTORY ---
+@app.route('/get_goal_history/<int:goal_id>')
+def get_goal_history(goal_id):
+    if 'user_id' not in session:
+        return jsonify({'success': False, 'message': 'Authentication required'}), 401
+
+    user = User.query.get(session['user_id'])
+    goal = Goal.query.get_or_404(goal_id)
+
+    # Check if the user is the employee OR the employee's manager
+    is_authorized = False
+    if goal.employee.id == user.id:
+        is_authorized = True
+    if user.role == 'Manager' and goal.employee.manager_id == user.id:
+        is_authorized = True
+
+    if not is_authorized:
+        return jsonify({'success': False, 'message': 'Permission denied'}), 403
+
+    updates = []
+    # Fetch updates and order them by newest first
+    for update in goal.updates.order_by(ProgressUpdate.timestamp.desc()).all():
+        updates.append({
+            'value': update.update_value,
+            'comment': update.comment,
+            'proof': update.proof_url,
+            'author': update.author.full_name,
+            'timestamp': update.timestamp.strftime('%d-%b-%Y %I:%M %p')
+        })
+
+    return jsonify({'success': True, 'history': updates, 'goal_title': goal.title})
 

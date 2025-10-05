@@ -1,7 +1,6 @@
 {% extends "base.html" %}
 
 {% block head_content %}
-    <!-- This is only needed for the manager's chart -->
     {% if user.role == 'Manager' and chart_labels %}
         <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     {% endif %}
@@ -25,8 +24,6 @@
         <footer>
             <small>Logged in as: {{ user.full_name }}</small><br>
             <small><strong>Score: {{ score }}/100</strong></small><br>
-            <!-- --- THIS IS THE CHANGE --- -->
-            <!-- Display the user's current league in the sidebar -->
             <small><strong>League: {{ user.league }}</strong></small>
         </footer>
     </aside>
@@ -42,34 +39,25 @@
             {% if goals %}
                 {% for goal in goals %}
                     <article>
-                        <header><strong>{{ goal.title }}</strong></header>
-                        Status: {{ goal.status }}
+                        <header><strong>{{ goal.title }}</strong> ({{goal.current_value}} / {{goal.target_value}} {{ goal.kpi_name }})</header>
+                        <div class="grid">
+                            <div>
+                                Status: <strong>{{ goal.status }}</strong>
+                            </div>
+                            <div style="text-align: right;">
+                                <!-- --- UI CHANGE: BUTTONS FOR MODALS --- -->
+                                <button class="secondary outline" onclick="showHistoryModal({{ goal.id }})">View History</button>
+                                <button onclick="showUpdateModal({{ goal.id }}, {{ goal.current_value }}, '{{ goal.status }}', {{ goal.target_value }})">Update Progress</button>
+                            </div>
+                        </div>
+                        <progress value="{{ goal.current_value }}" max="{{ goal.target_value }}"></progress>
+                        
                         {% if goal.manager_feedback %}
                             <div style="margin-top: 15px; padding: 10px; border-left: 3px solid var(--pico-primary);">
                                 <strong>Manager's Feedback:</strong>
                                 <p style="margin: 5px 0 0 0;"><em>"{{ goal.manager_feedback }}"</em></p>
                             </div>
                         {% endif %}
-                        <form action="{{ url_for('update_goal', goal_id=goal.id) }}" method="post" style="margin-top: 15px;">
-                            <div class="grid">
-                                <div>
-                                    <label for="progress-{{ goal.id }}">
-                                         <!-- Fix: Display current value relative to the target value -->
-                                        Progress: <span id="progress-value-{{ goal.id }}">{{ goal.current_value }}</span> / {{ goal.target_value }}
-                                    </label>
-                                     <!-- Fix: The max value of the slider should be the goal's target value -->
-                                    <input type="range" id="progress-{{ goal.id }}" name="progress" value="{{ goal.current_value }}" min="0" max="{{ goal.target_value }}">
-                                </div>
-                                <div>
-                                    <label for="status-{{ goal.id }}">Set Status</label>
-                                    <select id="status-{{ goal.id }}" name="status" required>
-                                        <option value="In Progress" {% if goal.status == 'In Progress' %}selected{% endif %}>In Progress</option>
-                                        <option value="Completed" {% if goal.status == 'Completed' %}selected{% endif %}>Completed</option>
-                                    </select>
-                                </div>
-                            </div>
-                            <button type="submit">Update</button>
-                        </form>
                     </article>
                 {% else %}
                     <p>You have no goals assigned yet.</p>
@@ -78,119 +66,94 @@
         {% endif %}
 
         {% if user.role == 'Manager' and reports_data %}
-        <hr>
-        <h2>Your Team's Progress</h2>
-        <article>
-            <header>Team Performance Chart</header>
-            <canvas id="teamPerformanceChart"></canvas>
-        </article>
-        {% for data in reports_data %}
-            <details>
-                <summary>
-                    <strong>{{ data.employee.full_name }}</strong> (Score: {{ data.score }}/100)
-                    <!-- --- THIS IS THE CHANGE --- -->
-                    <!-- Display the employee's league in the manager's view -->
-                    <small style="float: right; margin-left: 1rem;">League: {{ data.employee.league }}</small>
-                </summary>
-                {% if data.employee.goals %}
-                    <ul>
-                    {% for goal in data.employee.goals %}
-                        <li>
-                            {{ goal.title }} - Progress: {{ goal.current_value }} / {{ goal.target_value }}
-                            <form class="feedback-form" data-goal-id="{{ goal.id }}" style="margin-top: 10px;">
-                                <textarea name="feedback" placeholder="Add feedback for this goal...">{{ goal.manager_feedback or '' }}</textarea>
-                                <button type="submit" class="secondary" style="width: auto;">Submit Feedback</button>
-                                <small class="feedback-status" id="feedback-status-{{ goal.id }}" style="display:none; color: var(--pico-color-green-500);"></small>
-                            </form>
-                        </li>
-                    {% endfor %}
-                    </ul>
-                {% else %}
-                    <p>No goals assigned yet.</p>
-                {% endif %}
-            </details>
-        {% endfor %}
+            <hr>
+            <h2>Your Team's Progress</h2>
+            <article>
+                <header>Team Performance Chart</header>
+                <canvas id="teamPerformanceChart"></canvas>
+            </article>
+            {% for data in reports_data %}
+                <details>
+                    <summary>
+                        <strong>{{ data.employee.full_name }}</strong> (Score: {{ data.score }}/100)
+                        <small style="float: right; margin-left: 1rem;">League: {{ data.employee.league }}</small>
+                    </summary>
+                    <!-- --- THIS IS THE FIX --- -->
+                    <!-- The list of goals is now pre-sorted in routes.py -->
+                    {% if data.sorted_goals %}
+                        <ul>
+                        {% for goal in data.sorted_goals %}
+                            <li>
+                                {{ goal.title }} - Progress: {{ goal.current_value }} / {{ goal.target_value }}
+                                <button class="secondary outline" style="margin-left: 1rem; padding: 2px 8px;" onclick="showHistoryModal({{ goal.id }})">History</button>
+                                <form class="feedback-form" data-goal-id="{{ goal.id }}" style="margin-top: 10px;">
+                                    <textarea name="feedback" placeholder="Add feedback for this goal...">{{ goal.manager_feedback or '' }}</textarea>
+                                    <button type="submit" class="secondary" style="width: auto;">Submit Feedback</button>
+                                    <small class="feedback-status" id="feedback-status-{{ goal.id }}" style="display:none; color: var(--pico-color-green-500);"></small>
+                                </form>
+                            </li>
+                        {% endfor %}
+                        </ul>
+                    {% else %}
+                        <p>No goals assigned yet.</p>
+                    {% endif %}
+                </details>
+            {% endfor %}
         {% endif %}
     </main>
 </div>
 
-<!-- START: CONSOLIDATED SCRIPT BLOCK -->
-<script>
-    document.addEventListener('DOMContentLoaded', () => {
-        // --- Logic for updating the slider value text ---
-        document.querySelectorAll('input[type="range"]').forEach(slider => {
-            slider.addEventListener('input', (event) => {
-                const goalId = event.target.id.split('-').pop();
-                const valueSpan = document.getElementById(`progress-value-${goalId}`);
-                if (valueSpan) valueSpan.innerText = event.target.value;
-            });
-        });
+<!-- --- NEW: MODAL FOR UPDATING PROGRESS --- -->
+<dialog id="update-modal">
+    <article>
+        <header>
+            <a href="#close" aria-label="Close" class="close" onclick="closeModal('update-modal')"></a>
+            <strong>Update Progress</strong>
+        </header>
+        <form id="update-form" onsubmit="handleUpdateSubmit(event)">
+            <input type="hidden" id="update-goal-id" name="goal_id">
+            
+            <label for="progress-slider">
+                Progress: <span id="progress-value-display">0</span> / <span id="target-value-display">100</span>
+            </label>
+            <input type="range" id="progress-slider" name="progress" min="0" value="0">
+            
+            <label for="status-select">Status</label>
+            <select id="status-select" name="status">
+                <option value="In Progress">In Progress</option>
+                <option value="Completed">Completed</option>
+            </select>
+            
+            <label for="comment-textarea">Update Comment (Required)</label>
+            <textarea id="comment-textarea" name="comment" required placeholder="Describe the work you have completed..."></textarea>
+            
+            <label for="proof-input">Proof Link / Reference (Optional)</label>
+            <input type="text" id="proof-input" name="proof_url" placeholder="e.g., e-Office file number, shared document link...">
+            
+            <footer>
+                <button type="button" class="secondary" onclick="closeModal('update-modal')">Cancel</button>
+                <button type="submit" id="submit-update-btn">Submit Update</button>
+            </footer>
+        </form>
+    </article>
+</dialog>
 
-        // --- Logic for Dynamic Feedback Forms ---
-        document.querySelectorAll('.feedback-form').forEach(form => {
-            form.addEventListener('submit', function(event) {
-                event.preventDefault();
-                const goalId = this.dataset.goalId;
-                const feedbackText = this.querySelector('textarea').value;
-                const statusElement = document.getElementById(`feedback-status-${goalId}`);
-                fetch(`/add_feedback/${goalId}`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/x-www-form-urlencoded', },
-                    body: `feedback=${encodeURIComponent(feedbackText)}`
-                })
-                .then(r => r.json()).then(d => {
-                    if (d.success) {
-                        statusElement.innerText = 'Feedback saved!';
-                        statusElement.style.display = 'inline';
-                        setTimeout(() => { statusElement.style.display = 'none'; }, 2000);
-                    } else {
-                        statusElement.innerText = 'Error!';
-                        statusElement.style.color = 'var(--pico-color-red-500)';
-                        statusElement.style.display = 'inline';
-                    }
-                });
-            });
-        });
+<!-- --- NEW: MODAL FOR VIEWING HISTORY --- -->
+<dialog id="history-modal">
+    <article>
+        <header>
+            <a href="#close" aria-label="Close" class="close" onclick="closeModal('history-modal')"></a>
+            <strong id="history-goal-title">Progress History</strong>
+        </header>
+        <div id="history-content">
+            <!-- History will be loaded here by JavaScript -->
+            <p>Loading history...</p>
+        </div>
+        <footer>
+            <button onclick="closeModal('history-modal')">Close</button>
+        </footer>
+    </article>
+</dialog>
 
-        // --- Logic for Chart.js ---
-        const chartLabels = {{ chart_labels|tojson }};
-        if (chartLabels && chartLabels.length > 0) {
-            const chartData = {{ chart_data|tojson }};
-            const ctx = document.getElementById('teamPerformanceChart').getContext('2d');
-            new Chart(ctx, {
-                type: 'bar',
-                data: {
-                    labels: chartLabels,
-                    datasets: [{
-                        label: 'Performance Score',
-                        data: chartData,
-                        backgroundColor: 'rgba(99, 102, 241, 0.6)',
-                        borderColor: 'rgba(99, 102, 241, 1)',
-                        borderWidth: 1
-                    }]
-                },
-                options: {
-                    scales: {
-                        y: {
-                            beginAtZero: true,
-                            max: 100,
-                            ticks: { color: 'rgba(255,255,255,0.7)' },
-                            grid: { color: 'rgba(255,255,25_5,0.1)' }
-                        },
-                        x: {
-                            ticks: { color: 'rgba(255,255,255,0.7)' },
-                            grid: { color: 'rgba(255,255,255,0.1)' }
-                        }
-                    },
-                    responsive: true,
-                    plugins: {
-                        legend: { display: false }
-                    }
-                }
-            });
-        }
-    });
-</script>
-<!-- END: CONSOLIDATED SCRIPT BLOCK -->
 {% endblock %}
 

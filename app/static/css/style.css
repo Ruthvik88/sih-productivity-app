@@ -8,7 +8,7 @@
     --pico-primary-focus: rgba(99, 102, 241, 0.25);
     --pico-primary-inverse: #ffffff;
     --sidebar-background-color: #1f2937;
-    --pico-card-border-color: #374151;
+    --pico-card-border-color: #375151;
 }
 
 html, body {
@@ -72,6 +72,7 @@ html, body {
 .sidebar footer {
     position: absolute; bottom: 1.5rem;
     white-space: nowrap;
+    transition: opacity 0.3s, visibility 0.3s; /* Add transition for smooth hiding */
 }
 
 /* Main Content Area */
@@ -99,6 +100,13 @@ html, body {
     width: 0;
 }
 
+/* --- THIS IS THE FINAL FIX --- */
+/* When the sidebar is collapsed, make the footer invisible and non-interactive. */
+.layout-grid.sidebar-collapsed .sidebar footer {
+    opacity: 0;
+    visibility: hidden;
+}
+
 /* --- UPDATED --- */
 /* Increased top/left values to give the button more "padding" from the corner. */
 .sidebar-open-toggle {
@@ -114,10 +122,10 @@ html, body {
     display: none; /* JavaScript will manage showing this */
 
     /* --- NEW FIX: More direct centering for the icon --- */
-    padding: 0;                  /* 1. Removes default button padding */
-    font-size: 1.5rem;           /* 2. Makes the icon a bit bigger and easier to see */
-    text-align: center;          /* 3. Centers the icon horizontally */
-    line-height: 45px;           /* 4. Centers the icon vertically by matching the button's height */
+    padding: 0;                /* 1. Removes default button padding */
+    font-size: 1.5rem;         /* 2. Makes the icon a bit bigger and easier to see */
+    text-align: center;        /* 3. Centers the icon horizontally */
+    line-height: 45px;         /* 4. Centers the icon vertically by matching the button's height */
 }
 
 /* Login Page Styles */
@@ -126,3 +134,4 @@ html, body {
     align-items: center; min-height: 100vh;
 }
 .login-card { width: 100%; max-width: 450px; padding: 2.5rem; }
+
