@@ -1,8 +1,8 @@
-"""initial migration
+"""Initial migration with all features
 
-Revision ID: 56a6f5bc9255
+Revision ID: df83ab219d9d
 Revises: 
-Create Date: 2025-10-02 18:02:29.579698
+Create Date: 2025-10-05 00:41:55.513423
 
 """
 from alembic import op
@@ -10,7 +10,7 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision = '56a6f5bc9255'
+revision = 'df83ab219d9d'
 down_revision = None
 branch_labels = None
 depends_on = None
@@ -24,10 +24,14 @@ def upgrade():
     sa.Column('email', sa.String(length=120), nullable=False),
     sa.Column('password_hash', sa.String(length=128), nullable=True),
     sa.Column('role', sa.String(length=64), nullable=True),
+    sa.Column('league', sa.String(length=64), nullable=False),
+    sa.Column('manager_id', sa.Integer(), nullable=True),
+    sa.ForeignKeyConstraint(['manager_id'], ['user.id'], ),
     sa.PrimaryKeyConstraint('id')
     )
     with op.batch_alter_table('user', schema=None) as batch_op:
         batch_op.create_index(batch_op.f('ix_user_email'), ['email'], unique=True)
+        batch_op.create_index(batch_op.f('ix_user_league'), ['league'], unique=False)
         batch_op.create_index(batch_op.f('ix_user_role'), ['role'], unique=False)
 
     op.create_table('goal',
@@ -36,7 +40,8 @@ def upgrade():
     sa.Column('description', sa.Text(), nullable=True),
     sa.Column('kpi_name', sa.String(length=100), nullable=True),
     sa.Column('current_value', sa.Integer(), nullable=True),
-    sa.Column('target_value', sa.Integer(), nullable=True),
+    sa.Column('target_value', sa.Integer(), nullable=False),
+    sa.Column('weight', sa.Integer(), server_default='5', nullable=False),
     sa.Column('status', sa.String(length=64), nullable=True),
     sa.Column('due_date', sa.DateTime(), nullable=True),
     sa.Column('manager_feedback', sa.Text(), nullable=True),
@@ -58,6 +63,7 @@ def downgrade():
     op.drop_table('goal')
     with op.batch_alter_table('user', schema=None) as batch_op:
         batch_op.drop_index(batch_op.f('ix_user_role'))
+        batch_op.drop_index(batch_op.f('ix_user_league'))
         batch_op.drop_index(batch_op.f('ix_user_email'))
 
     op.drop_table('user')

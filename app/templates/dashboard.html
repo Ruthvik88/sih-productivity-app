@@ -1,9 +1,12 @@
 {% extends "base.html" %}
 
 {% block head_content %}
-<!-- We need Chart.js for the manager's team performance chart -->
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- This is only needed for the manager's chart -->
+    {% if user.role == 'Manager' and chart_labels %}
+        <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    {% endif %}
 {% endblock %}
+
 
 {% block body_content %}
 <div class="layout-grid">
@@ -21,7 +24,10 @@
         </ul>
         <footer>
             <small>Logged in as: {{ user.full_name }}</small><br>
-            <small><strong>Score: {{ score }}/100</strong></small>
+            <small><strong>Score: {{ score }}/100</strong></small><br>
+            <!-- --- THIS IS THE CHANGE --- -->
+            <!-- Display the user's current league in the sidebar -->
+            <small><strong>League: {{ user.league }}</strong></small>
         </footer>
     </aside>
 
@@ -48,9 +54,11 @@
                             <div class="grid">
                                 <div>
                                     <label for="progress-{{ goal.id }}">
-                                        Progress: <span id="progress-value-{{ goal.id }}">{{ goal.current_value }}</span>%
+                                         <!-- Fix: Display current value relative to the target value -->
+                                        Progress: <span id="progress-value-{{ goal.id }}">{{ goal.current_value }}</span> / {{ goal.target_value }}
                                     </label>
-                                    <input type="range" id="progress-{{ goal.id }}" name="progress" value="{{ goal.current_value }}" min="0" max="100">
+                                     <!-- Fix: The max value of the slider should be the goal's target value -->
+                                    <input type="range" id="progress-{{ goal.id }}" name="progress" value="{{ goal.current_value }}" min="0" max="{{ goal.target_value }}">
                                 </div>
                                 <div>
                                     <label for="status-{{ goal.id }}">Set Status</label>
@@ -80,12 +88,15 @@
             <details>
                 <summary>
                     <strong>{{ data.employee.full_name }}</strong> (Score: {{ data.score }}/100)
+                    <!-- --- THIS IS THE CHANGE --- -->
+                    <!-- Display the employee's league in the manager's view -->
+                    <small style="float: right; margin-left: 1rem;">League: {{ data.employee.league }}</small>
                 </summary>
                 {% if data.employee.goals %}
                     <ul>
                     {% for goal in data.employee.goals %}
                         <li>
-                            {{ goal.title }} - Progress: {{ goal.current_value }}%
+                            {{ goal.title }} - Progress: {{ goal.current_value }} / {{ goal.target_value }}
                             <form class="feedback-form" data-goal-id="{{ goal.id }}" style="margin-top: 10px;">
                                 <textarea name="feedback" placeholder="Add feedback for this goal...">{{ goal.manager_feedback or '' }}</textarea>
                                 <button type="submit" class="secondary" style="width: auto;">Submit Feedback</button>
@@ -106,7 +117,7 @@
 <!-- START: CONSOLIDATED SCRIPT BLOCK -->
 <script>
     document.addEventListener('DOMContentLoaded', () => {
-        // --- NEW: Logic for updating the slider value text ---
+        // --- Logic for updating the slider value text ---
         document.querySelectorAll('input[type="range"]').forEach(slider => {
             slider.addEventListener('input', (event) => {
                 const goalId = event.target.id.split('-').pop();
@@ -164,7 +175,7 @@
                             beginAtZero: true,
                             max: 100,
                             ticks: { color: 'rgba(255,255,255,0.7)' },
-                            grid: { color: 'rgba(255,255,255,0.1)' }
+                            grid: { color: 'rgba(255,255,25_5,0.1)' }
                         },
                         x: {
                             ticks: { color: 'rgba(255,255,255,0.7)' },

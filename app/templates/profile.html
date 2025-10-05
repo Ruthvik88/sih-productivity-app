@@ -40,13 +40,21 @@
                     <label>Role</label>
                     <input type="text" value="{{ user.role }}" readonly>
                 </div>
-                {% if user.manager %}
+                <!-- --- THIS IS THE CHANGE --- -->
+                <!-- Display the user's current league on their profile -->
+                <div>
+                    <label>Current League</label>
+                    <input type="text" value="{{ user.league }}" readonly>
+                </div>
+            </div>
+            {% if user.manager %}
+            <div class="grid">
                 <div>
                     <label>Manager</label>
                     <input type="text" value="{{ user.manager.full_name }}" readonly>
                 </div>
-                {% endif %}
             </div>
+            {% endif %}
             <label>Current Performance Score</label>
             <progress value="{{ score }}" max="100"></progress>
         </article>

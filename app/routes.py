@@ -88,6 +88,11 @@ def update_goal(goal_id):
     
     db.session.commit()
     
+    # --- THIS IS THE CHANGE FOR THE GAMIFICATION FEATURE ---
+    # After updating the goal, get the user and check if they qualify for a promotion.
+    user = User.query.get(session['user_id'])
+    user.update_league()
+    
     flash('Goal updated successfully!')
     return redirect(url_for('dashboard'))
 
